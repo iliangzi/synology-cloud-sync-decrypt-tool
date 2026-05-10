@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 )
@@ -114,10 +115,16 @@ func DecryptorWithKeyIV(key, iv []byte) (cipher.BlockMode, error) {
 
 // 使用私钥解密
 func DecryptWithPrivateKey(ciphertext, privateKey []byte) ([]byte, error) {
-	privKey, err := x509.ParsePKCS1PrivateKey(privateKey)
+	// 尝试 PEM 解码，若成功则取 DER 字节；否则假设已是 DER 格式
+	keyDER := privateKey
+	if block, _ := pem.Decode(privateKey); block != nil {
+		keyDER = block.Bytes
+	}
+
+	privKey, err := x509.ParsePKCS1PrivateKey(keyDER)
 	if err != nil {
 		// 尝试解析PKCS8格式
-		privKeyInterface, err := x509.ParsePKCS8PrivateKey(privateKey)
+		privKeyInterface, err := x509.ParsePKCS8PrivateKey(keyDER)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %v", err)
 		}
